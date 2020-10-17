@@ -1,25 +1,150 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
+  word_document: default
   html_document:
-    keep_md: true
+    keep_md: yes
+  pdf_document: default
 ---
 
 
 ## Loading and preprocessing the data
+### 1. Code for reading in the dataset and/or processing the data
+```{r}
+options(warn = -1)
+unzip("activity.zip")
+data <- read.csv("activity.csv")
 
-
+summary(data)
+```
 
 ## What is mean total number of steps taken per day?
+```{r}
+dsteps <- aggregate(steps ~ date, 
+                    data = data, 
+                    FUN = sum, 
+                    na.rm = TRUE)
+head(dsteps)
+```
+### 2. Histogram of the total number of steps taken each day
+```{r}
+hist(dsteps$steps, 
+     xlab = "Steps taken per day", 
+     ylab = "Frequency", 
+     main = "Steps taken each day", 
+     breaks = 25, 
+     col = "skyblue")
+```
 
+### 3. Mean and median number of steps taken each day
+```{r, results= "hide"}
+meansteps <- mean(dsteps$steps, 
+                  round = 2,
+                  na.rm = TRUE)
+mediansteps <- median(dsteps$steps, 
+                      round = 2,
+                      na.rm = TRUE)
+```
+Mean of the total number of steps taken per day: `r meansteps`  
+Median of the total number of steps taken per day: `r mediansteps`
 
 
 ## What is the average daily activity pattern?
+### 4. Time series plot of the average number of steps taken
+```{r}
+isteps <- aggregate(steps ~ interval, 
+                     data = data, 
+                     FUN = mean, 
+                     na.rm = TRUE)
+plot(isteps$interval, 
+     isteps$steps, 
+     xlab = "Interval", 
+     ylab = "Average number of steps",
+     main= "Average number of steps taken",
+     col="skyblue",
+     type="l",
+     lwd = 3)
+```
 
-
+### 5. The 5-minute interval that, on average, contains the maximum number of steps
+```{r, results= "hide"}
+maxsteps <- isteps[which.max(isteps$steps), ]$interval
+```
+On average across all the days in the dataset, interval number `r maxsteps` contains the maximum number of steps.
 
 ## Imputing missing values
+### 6. Code to describe and show a strategy for imputing missing data
+```{r, results= "hide"}
+missing <- sum(is.na(data$steps))
+```
+Total number of missing values in the dataset: `r missing`
+
+```{r, results= "hide"}
+library(zoo)
+data2 <- subset(data, select = c(1))
+data2 <- na.aggregate(data2)
+data3 <- cbind(data[, 2:3], data2[,1])
+```
+
+The missing values in the dataset were filled with the mean value for that 5-minute interval.
+
+```{r}
+data3NAs <- sum(is.na(data3))
+summary(data3)
+```
+
+The new dataset is equal the original dataset but with missing data filled in.  Now this dataset has `r data3NAs` missing values.
 
 
+### 7. Histogram of the total number of steps taken each day after missing values are imputed
+```{r}
+dsteps3 <- aggregate(steps ~ date, 
+                    data = data3, 
+                    FUN = sum, 
+                    na.rm = TRUE)
+
+hist(dsteps3$steps, 
+     xlab = "Steps taken per day", 
+     ylab = "Frequency", 
+     main = "Steps taken each day", 
+     breaks = 25, 
+     col = "skyblue")
+```
+
+```{r, results= "hide"}
+meansteps2 <- mean(data3$steps, 
+                  round = 2,
+                  na.rm = TRUE)
+mediansteps2 <- median(data3$steps, 
+                      round = 2,
+                      na.rm = TRUE)
+```
+Mean of the total number of steps taken per day: `r meansteps2`  
+Median of the total number of steps taken per day: `r mediansteps2`
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### 8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r}
+library(ggplot2)
+data$date <- as.POSIXct(data$date, 
+                        "%Y-%m-%d")
+dayofweek <- weekdays(data$date)
+data <- cbind(data, dayofweek)
+```
+```{r}
+data$dtype <- sapply(data$date, 
+                     function(x) {
+    if (weekdays(x) == "sábado" | weekdays(x) =="domingo") 
+    {y <- "Weekend"} else 
+    {y <- "Weekday"}
+    y
+})
+```
+```{r}
+data4 <- aggregate(steps ~ interval + dtype, data, mean, na.rm = TRUE)
+
+ggplot(data4, aes(interval, steps)) + labs(x = "Interval", y = "Average steps", title = "Average number of steps taken per 5-minute interval") + geom_line() + facet_grid(~ dtype)
+```
+
+### 9.All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
